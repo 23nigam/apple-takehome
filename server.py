@@ -1,9 +1,9 @@
 from waitress import serve
-from flask import Flask, jsonify
+from flask import Flask, make_response
 from flask_restx import Resource, Api
 import datetime
 import random
-import json
+import re
 
 app = Flask(__name__)
 api = Api(app)
@@ -12,16 +12,28 @@ weather_ns = api.namespace("weather","API's to work with weather data")
 
 @weather_ns.route('/forcast/<zipcode>', methods=["GET"])
 class WeatherForcast(Resource):
+    zipcode_pattern = "^[0-9]{5}(?:-[0-9]{4})?$"
     weather_details = dict()
     weather_details_validity = dict()
+    def get_error_payload(this, zipcode): 
+        return {
+            'message': 'invalid zipcode',
+            'zipcode': zipcode
+            }
 
     def get(this, zipcode):
-        return jsonify(this.get_weather_details(zipcode))
+        if re.match(this.zipcode_pattern, zipcode):
+            resp = make_response(this.get_weather_details(zipcode), 200)
+            resp.cache_control.max_age = int((this.weather_details_validity.get(zipcode) - datetime.datetime.now()).total_seconds())
+            resp.cache_control.public = True
+            return resp
+        
+        return make_response(this.get_error_payload(zipcode), 400)
     
     def get_weather_details(this, zipcode):
         if zipcode not in this.weather_details_validity or this.weather_details_validity.get(zipcode) < datetime.datetime.now():
             this.weather_details[zipcode] = this.generate_wather_details(zipcode)
-            this.weather_details_validity[zipcode] = datetime.datetime.now() + datetime.timedelta(minutes=30)
+            this.weather_details_validity[zipcode] = datetime.datetime.now() + datetime.timedelta(minutes=2)
 
         return this.weather_details.get(zipcode)
 

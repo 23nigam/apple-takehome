@@ -33,7 +33,7 @@ class WeatherForcast(Resource):
     def get_weather_details(this, zipcode):
         if zipcode not in this.weather_details_validity or this.weather_details_validity.get(zipcode) < datetime.datetime.now():
             this.weather_details[zipcode] = this.generate_wather_details(zipcode)
-            this.weather_details_validity[zipcode] = datetime.datetime.now() + datetime.timedelta(minutes=2)
+            this.weather_details_validity[zipcode] = datetime.datetime.now() + datetime.timedelta(minutes=30)
 
         return this.weather_details.get(zipcode)
 
